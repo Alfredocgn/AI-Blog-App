@@ -55,7 +55,8 @@
     </div>
     <div>
       <a href="#" class="text-white hover:underline ">Welcome {{user.username}}</a>
-      <a href="logout" class="text-white hover:underline ">Logout</a>
+      <a href="/blog-list" class="text-white hover:underline ">Saved Blog Posts</a>
+      <a href="#" class="text-white hover:underline ">Logout</a>
     </div>
   </nav>
   <!-- Main -->
@@ -101,26 +102,28 @@
   <script>
     document.getElementById('generateBlogButton').addEventListener('click',async() => {
 
+
       const youtubeLink = document.getElementById('youtubeLink').value;
       const blogContent = document.getElementById('blogContent');
 
       if(youtubeLink){
+
         document.getElementById('loading-circle').style.display = 'block';
         blogContent.innerHTML = '';
 
-        const endpointUrl = '/generate-blog'
+        const endpointUrl = '/generate-blog';
 
         try {
           const response = await fetch(endpointUrl,{
             method:'POST',
             headers:{
-              'Content-Type':'application/json'
+              'Content-Type':'application/json',
             },
             body:JSON.stringify({link:youtubeLink})
           });
 
           const data = await response.json()
-          console.log(data)
+
 
           blogContent.innerHTML = data.content;
 

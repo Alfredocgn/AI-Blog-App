@@ -8,8 +8,15 @@ import json
 from pytube import YouTube
 from django.conf import settings
 import os
+from dotenv import load_dotenv
 import assemblyai as aai
 import openai
+from .models import BlogPost
+
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+aai_api_key = os.getenv('AAI_API_KEY')
+
 
 
 # Create your views here.
@@ -27,7 +34,7 @@ def generate_blog(request):
       return JsonResponse({'error':'Invalid data sent'},status=400)
     
     title = yt_title(yt_link)
-    print(title)
+
 
     transcription = get_transcription(yt_link)
     if not transcription:
@@ -37,6 +44,16 @@ def generate_blog(request):
     blog_content = generate_blog_from_transcription(transcription)
     if not blog_content:
       return JsonResponse({'error':'Failed to generate blog article'},status=500)
+    
+    new_blog_article = BlogPost.objects.create(
+      user = request.user,
+      youtube_title = title,
+      youtube_link = yt_link,
+      generated_content= blog_content,
+
+    )
+
+    new_blog_article.save()
     
 
 
@@ -63,6 +80,7 @@ def download_audio(link):
 
 def get_transcription(link):
   audio_file = download_audio(link)
+  aai.settings.api_key = aai_api_key
 
 
   transcriber = aai.Transcriber()
@@ -70,11 +88,12 @@ def get_transcription(link):
   return transcript.text
 
 def generate_blog_from_transcription(transcription):
+  openai.api_key = api_key
 
   prompt = f"Based on the following transcript from a YouTube video, write a comprehensive blog article, write it based on the transcript, but dont make it look like a youtube video, make it look like a proper blog article:\n\n{transcription}\n\nArticle:"
 
   response = openai.Completion.create(
-    model = "text-davinci-003",
+    model = "gpt-3.5-turbo-instruct",
     prompt = prompt,
     max_tokens = 1000
   )
@@ -82,7 +101,17 @@ def generate_blog_from_transcription(transcription):
   generated_content = response.choices[0].text.strip()
   return generated_content
 
+def blog_list(request):
+  blog_articles = BlogPost.objects.filter(user = request.user)
+  return render(request,'all-blogs.html',{'blog_articles':blog_articles})
 
+
+def blog_details(request,pk):
+  blog_article_detail = BlogPost.objects.get(id=pk)
+  if request.user == blog_article_detail.user:
+    return render(request,'blog-details.html',{'blog_article_detail':blog_article_detail})
+  else:
+    return redirect('/')
 
 def user_login(request):
   if request.method == "POST":
